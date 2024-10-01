@@ -69,7 +69,7 @@ export default function Tx() {
       />
 
       {privateKeyAccount && (
-        <Text style={{ color: "#fff" }}>
+        <Text style={{ color: "red" }}>
           PrivateKey Account: {privateKeyAccount.address}
         </Text>
       )}
@@ -80,15 +80,15 @@ export default function Tx() {
       />
 
       {mnemonicAccount && (
-        <Text style={{ color: "#fff" }}>
+        <Text style={{ color: "red" }}>
           Mnemonic Account: {mnemonicAccount.address}
         </Text>
       )}
 
       <Button title="Send transaction" onPress={sendTxFromPrivateKeyAccount} />
 
-      {txHash && <Text style={{ color: "#fff" }}>TxHash: {txHash}</Text>}
-      {error && <Text style={{ color: "#fff" }}>error: {error}</Text>}
+      {txHash && <Text style={{ color: "red" }}>TxHash: {txHash}</Text>}
+      {error && <Text style={{ color: "red" }}>error: {error}</Text>}
     </View>
   );
 }
