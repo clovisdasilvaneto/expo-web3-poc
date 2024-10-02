@@ -10,14 +10,17 @@ import {
 import { sepolia } from "viem/chains";
 import {
   createWalletClient,
-  parseUnits,
   http,
   createPublicClient,
   formatEther,
-  parseGwei,
   parseEther,
 } from "viem";
-import { mainnet } from "viem/chains";
+import DeviceCrypto from "react-native-device-crypto";
+import * as Keychain from "react-native-keychain";
+import {
+  GestureHandlerRootView,
+  TouchableOpacity,
+} from "react-native-gesture-handler";
 
 export const publicClient = createPublicClient({
   chain: sepolia,
@@ -33,31 +36,61 @@ export default function Tx() {
     useState<PrivateKeyAccount>();
   const [mnemonicAccount, setMnemonicAccount] = useState<HDAccount>();
   const [txHash, setTxHash] = useState<string>();
+  const [iv, setIv] = useState<string>();
+  const [reveleadKey, setReveleadKey] = useState<string>();
   const [error, setError] = useState<string>();
 
   const createPrivateKeyAccount = async () => {
     try {
       const privateKey = generatePrivateKey();
-
       const account = privateKeyToAccount(privateKey);
+
+      await DeviceCrypto.getOrCreateAsymmetricKey("safe", {
+        accessLevel: 2,
+        invalidateOnNewBiometry: true,
+      });
+
+      const encryptyedPrivateKey = await DeviceCrypto.encrypt(
+        "safe",
+        privateKey,
+        {
+          biometryTitle: "Authenticate",
+          biometrySubTitle: "Signing",
+          biometryDescription: "Authenticate your self to sign the text",
+        }
+      );
+
+      await Keychain.setGenericPassword(
+        "safeuser",
+        encryptyedPrivateKey.encryptedText
+      );
+
+      // TODO: check where we are going to store it
+      setIv(encryptyedPrivateKey.iv);
+      setPrivateKeyAccount(account);
 
       const balance = await publicClient.getBalance({
         address: account.address,
       });
       const balanceAsEther = formatEther(balance);
+
       console.log("balance: ", balanceAsEther);
-      setPrivateKeyAccount(account);
     } catch (err) {
       console.log(err);
     }
   };
 
-  const createMnemonicAccount = () => {
-    const account = mnemonicToAccount(
-      "legal winner thank year wave sausage worth useful legal winner thank yellow"
-    );
+  const createMnemonicAccount = async () => {
+    try {
+      if (!privateKeyAccount) return;
+      const account = mnemonicToAccount(
+        "legal winner thank year wave sausage worth useful legal winner thank yellow"
+      );
 
-    setMnemonicAccount(account);
+      setMnemonicAccount(account);
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   const sendTxFromPrivateKeyAccount = async () => {
@@ -79,6 +112,30 @@ export default function Tx() {
     }
   };
 
+  const revealPrivateKey = async () => {
+    const user = await Keychain.getGenericPassword();
+
+    if (!iv) throw "iv does not exists";
+    if (!user) throw "user password not found";
+
+    try {
+      const decryptedKey = await DeviceCrypto.decrypt(
+        "safe",
+        user.password,
+        iv,
+        {
+          biometryTitle: "Authenticate",
+          biometrySubTitle: "Signing",
+          biometryDescription: "Authenticate your self to sign the text",
+        }
+      );
+
+      setReveleadKey(decryptedKey);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   return (
     <View>
       <Button
@@ -87,9 +144,39 @@ export default function Tx() {
       />
 
       {privateKeyAccount && (
-        <Text style={{ color: "red" }}>
-          PrivateKey Account: {privateKeyAccount.address}
-        </Text>
+        <>
+          <Text style={{ color: "yellow" }}>
+            Account Address: {privateKeyAccount.address}
+          </Text>
+
+          {reveleadKey && (
+            <Text style={{ color: "red", marginTop: 10 }}>
+              Account Private key: {reveleadKey}
+            </Text>
+          )}
+
+          <GestureHandlerRootView>
+            <TouchableOpacity
+              style={{
+                backgroundColor: "red",
+                padding: 32,
+                paddingTop: 16,
+                paddingBottom: 16,
+                borderRadius: 10,
+                marginTop: 10,
+              }}
+              onPress={revealPrivateKey}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                }}
+              >
+                Reveal private key
+              </Text>
+            </TouchableOpacity>
+          </GestureHandlerRootView>
+        </>
       )}
 
       <Button
