@@ -7,11 +7,24 @@ import {
   PrivateKeyAccount,
   privateKeyToAccount,
 } from "viem/accounts";
+import { sepolia } from "viem/chains";
+import {
+  createWalletClient,
+  parseUnits,
+  http,
+  createPublicClient,
+  formatEther,
+  parseGwei,
+  parseEther,
+} from "viem";
 import { mainnet } from "viem/chains";
-import { createWalletClient, parseUnits, http } from "viem";
 
+export const publicClient = createPublicClient({
+  chain: sepolia,
+  transport: http(),
+});
 const client = createWalletClient({
-  chain: mainnet,
+  chain: sepolia,
   transport: http(),
 });
 
@@ -22,12 +35,17 @@ export default function Tx() {
   const [txHash, setTxHash] = useState<string>();
   const [error, setError] = useState<string>();
 
-  const createPrivateKeyAccount = () => {
+  const createPrivateKeyAccount = async () => {
     try {
       const privateKey = generatePrivateKey();
 
       const account = privateKeyToAccount(privateKey);
 
+      const balance = await publicClient.getBalance({
+        address: account.address,
+      });
+      const balanceAsEther = formatEther(balance);
+      console.log("balance: ", balanceAsEther);
       setPrivateKeyAccount(account);
     } catch (err) {
       console.log(err);
@@ -45,12 +63,12 @@ export default function Tx() {
   const sendTxFromPrivateKeyAccount = async () => {
     if (!privateKeyAccount) return;
 
-    const value = parseUnits("1", 18);
+    const value = parseEther("0.18");
 
     try {
       const hash = await client.sendTransaction({
         account: privateKeyAccount,
-        to: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        to: "0xDa5e9FA404881Ff36DDa97b41Da402dF6430EE6b",
         value,
       });
 
